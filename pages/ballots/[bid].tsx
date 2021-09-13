@@ -1,21 +1,10 @@
-import { GetServerSideProps, NextPage } from "next"
-import clsx from 'clsx'
-import { useRouter } from "next/router"
-import { Context, useEffect, useReducer, useState } from "react"
-import { db, user, SEA } from '../../lib/database'
+import { GetServerSideProps, NextPage } from 'next'
+import { useContext, useEffect, useState } from 'react'
+import { db, UserContext } from '../../lib/database'
+import { useBaseReducer } from '../../lib/base-reducer'
 
 interface BallotPageProps {
   bid: string
-}
-
-interface ProposalsObject {
-  [title: string]: ProposalTemplate
-}
-
-interface UserVote {
-  [title: string]: {
-    vote: 'yes' | 'no' | 'undecided'
-  }
 }
 
 interface ProposalTemplate {
@@ -26,38 +15,38 @@ interface ProposalTemplate {
 }
 
 const Ballot: NextPage<BallotPageProps> = ({bid}) => {
-  
-  const ballot = db.get('ballots').get(bid)
-  const [proposals, setProposals] = useState<ProposalsObject>({})
-  const [dispProposals, setDispProposals] = useState<any[]>([])
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [pbk, setPbk] = useState('')
+  const { user, username, setUsername } = useContext(UserContext)
 
+  const [usernameForm, setusernameForm] = useState('')
+  const [passwordForm, setpasswordForm] = useState('')
+
+  const [proposals, proposalsReducer] = useBaseReducer<ProposalTemplate>('title', [])
+
+  const handleAddProposal = (proposalToAdd :ProposalTemplate) => {
+    proposalsReducer({ type: "ADD", payload: {data: [proposalToAdd]}})
+  }
+
+  const handleUpdateProposal = (proposalToAdd: ProposalTemplate) => {
+    proposalsReducer({ type: "UPDATE", payload: {data: proposalToAdd}})
+  }
 
   useEffect(() => {
-    // @ts-ignore
-    db.on('auth', async (event: Event) => {
-      const alias = await user.get('alias')
-      setUsername(alias.toString())
-    })
+    const ballot = db.get('ballots').get(bid)
 
     ballot.map().on((aProposal, id) => {
-      const tmp = proposals
 
       let yesCount = 0
       let noCount = 0
       // a vote in the votes collection is a reference to the vote of the person who made it
       // i.e., a user makes a vote, and save it in their own collection, then save that reference to the proposal collection
-      tmp[aProposal?.title] = {
+      const tmp = {
         title: aProposal?.title,
         description: aProposal?.description,
         voteCountYes: yesCount,
         voteCountNo: noCount
-      }  
-      setDispProposals(Object.entries(tmp))
-      
+      }
+
+      handleAddProposal(tmp)
       ballot.get(aProposal?.title).get('votes').map().once((vote: any, key) => {
         let v
         if (vote.err) {
@@ -70,18 +59,18 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
 
             if (v === 'yes') {
               yesCount += 1
-              tmp[aProposal?.title].voteCountYes = yesCount
+              tmp.voteCountYes = yesCount
+              handleUpdateProposal(tmp)
             }
             if (v === 'no') {
               noCount += 1
-              tmp[aProposal?.title].voteCountNo = noCount
+              tmp.voteCountNo = noCount
+              handleUpdateProposal(tmp)
             }
-            console.log(`yes: ${yesCount}`)
-            console.log(`no: ${noCount}`)
-            setDispProposals(Object.entries(tmp))
           })
         }
       })
+
     })
 
     return () => {}
@@ -89,26 +78,25 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
 
 
   const login =  () => {
-      (user.auth(username, password, async (ack: any) => {
+      (user.auth(usernameForm, passwordForm, async (ack: any) => {
       if (ack.err) {
         ack.err && alert(ack.err)
       } else {
-        setPbk(ack.soul.substring(1,(ack.soul).length))
-        setLoggedIn(true)
+        console.log('successful login!')
       }
     }))
   }
 
   const signUp = () => {
-    if (username.length < 4) {
-      alert('Username too short! minimun 4 char')
+    if (usernameForm.length < 4) {
+      alert('usernameForm too short! minimun 4 char')
       return
     }
-    if (password.length < 8) {
-      alert('Password too short! minimum 8 char')
+    if (passwordForm.length < 8) {
+      alert('passwordForm too short! minimum 8 char')
       return
     }
-    user.create(username, password, ({ err }: any) => {
+    user.create(usernameForm, passwordForm, ({ err }: any) => {
       if (err) {
         alert(err);
       } else {
@@ -124,9 +112,11 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
    * @param proposalTitle 
    */
   const handleVoteClick = (vote: 'yes' | 'no', proposalTitle: string) => {
-    if (loggedIn) {
+    // @ts-ignore
+    if (user.is) {
       user.get('votes').get('ballots').get(bid).get(proposalTitle).put({'vote': vote})
-      ballot.get(proposalTitle).get('votes').get(pbk).put({vote})
+      // @ts-ignore
+      db.get('ballots').get(bid).get(proposalTitle).get('votes').get(user.is.pub).put({vote})
       
     } else {
       alert('Please Authenticate Yourself first')
@@ -136,15 +126,17 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
 
   return (
       <div className="min-h-screen bg-black text-white m-0 p-8 grid grid-rows-1 grid-cols-6">
-        {!loggedIn && (
+        {
+        // @ts-ignore
+        !user.is && (
         <div className="col-span-2 flex flex-col space-y-8 p-8">
           <div className="flex flex-col space-y-4">
-            <label>Username</label>
-            <input onChange={e => setUsername(e.target.value)} type="text" className="bg-black border-white border-2 rounded-md p-2"/>
+            <label>username</label>
+            <input onChange={e => setusernameForm(e.target.value)} type="text" className="bg-black border-white border-2 rounded-md p-2"/>
           </div>
           <div className="flex flex-col space-y-4">
-            <label>Password</label>
-            <input onChange={e => setPassword(e.target.value)} type="password" className="bg-black border-white border-2 rounded-md p-2"/>
+            <label>password</label>
+            <input onChange={e => setpasswordForm(e.target.value)} type="password" className="bg-black border-white border-2 rounded-md p-2"/>
           </div>
           <div className="flex flex-row justify-evenly space-x-4">
             <button onClick={() => login()} className="px-4 py-2 w-full bg-green-300 text-black">Login</button>
@@ -153,40 +145,42 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
           <button className="px-4 py-2 w-full bg-yellow-300 text-black">Submit</button>
         </div>    
         )}
-        {loggedIn && (
+        {
+        // @ts-ignore
+        user.is && (
         <div className="col-span-2 flex flex-col space-y-8 p-8">
-          <p>Hi <i className="text-2xl">{username}</i></p>
-          <button onClick={() => user.leave() && setLoggedIn(false)} className="p-2 bg-red-600">Sign Out</button>
+          <p>Hi <i className="text-2xl">{username ? username: ' no username '}</i></p>
+          <button onClick={() => user.leave() && setUsername ? setUsername('') : true} className="p-2 bg-red-600">Sign Out</button>
         </div>    
         )}
         <ul className="col-span-4 flex flex-col space-y-8 p-8">
         {
-            dispProposals.map((proposal, index) => {
+            proposals.map((proposal, index) => {
               let yesWidth = 50
               let noWidth = 50
 
-              const yes = proposal[1].voteCountYes
-              const no = proposal[1].voteCountNo
+              const yes = proposal.voteCountYes
+              const no = proposal.voteCountNo
               if (!(yes == 0 && no == 0)) {
                 const totalVotes = yes + no
-                const yesPercentage = Math.round(proposal[1].voteCountYes / totalVotes * 100)
-                const noPercentage = Math.round(proposal[1].voteCountNo / totalVotes * 100)
+                const yesPercentage = Math.round(proposal.voteCountYes / totalVotes * 100)
+                const noPercentage = Math.round(proposal.voteCountNo / totalVotes * 100)
                 yesWidth = isFinite(yesPercentage) ? yesPercentage : 50
                 noWidth = isFinite(noPercentage) ? noPercentage : 50
               }
               return (
-                <li key={proposal[0]}>
+                <li key={proposal.title}>
                   <div className="flex flex-row h-40 justify-between border-white border-4 border-b-0 p-8">
                     <div>
-                      <p className="text-2xl">{proposal[1].title}</p>
-                      <p>{proposal[1].description}</p>
+                      <p className="text-2xl">{proposal.title}</p>
+                      <p>{proposal.description}</p>
                     </div>
                     <div className="h-full flex flex-col space-y-4 justify-evenly p-8">
-                      <button onClick={() => handleVoteClick('yes', proposal[0])} className="text-4xl hover:scale-110">
-                        ✅
+                      <button onClick={() => handleVoteClick('yes', proposal.title)} className="text-4xl hover:scale-110">
+                        ✅: {proposal.voteCountYes}
                       </button>
-                      <button onClick={() => handleVoteClick('no', proposal[0])}  className="text-4xl hover:scale-110">
-                        ❌
+                      <button onClick={() => handleVoteClick('no', proposal.title)}  className="text-4xl hover:scale-110">
+                        ❌: {proposal.voteCountNo}
                       </button>
                     </div>
                   </div>
@@ -206,19 +200,17 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const bid: string  = (context.params?.bid ? context.params?.bid : '').toString()
-
-  if (bid) {
-      return {
-          props: {
-              valid: true,
-              bid:bid
-          }
-      }
-  } 
-  return {
-      props: {
-          valid: false
-      }
+  let exists = true
+  await db.get('ballots').get(bid, (ack) => {
+    if (ack.put) exists = true
+    else exists = false
+  })
+  if (exists) {
+    return {props: {bid: bid}}
+  } else {
+    context.res.writeHead(302, { Location: '/' });
+    context.res.end();
+    return {props:{}}
   }
 }
 
