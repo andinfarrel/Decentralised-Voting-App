@@ -3,6 +3,7 @@ import type { NextPage } from 'next'
 import slugify from 'slugify'
 import { useRouter } from 'next/router'
 import { db } from '../lib/database'
+import { useBaseReducer } from '../lib/base-reducer'
 
 interface ProposalsObject {
   [title: string]: ProposalTemplate
@@ -15,34 +16,32 @@ interface ProposalTemplate {
 const Home: NextPage = () => {
   const router = useRouter()
   const [ballotTitle, setBallotTitle] = useState('')
-  const [proposals, setProposals] = useState<ProposalsObject>({})
-  const [dispProposals, setDispProposals] = useState<any[]>([])
+  const [proposals, proposalsReducer] = useBaseReducer<ProposalTemplate>('title', [])
   const [proposalTitle, setProposalTitle] = useState('')
   const [proposalDescription, setProposalDescription] = useState('')
 
   const addProposal = (title:string, description: string) => {
-    if (title.length < 4 || title.length > 100) { 
-      alert('title must be between 4 and 100 characters long') 
+    if (title.length < 4 || title.length > 300) { 
+      alert('title must be between 4 and 300 characters long') 
       return
     }
-    if (description.length < 4 || description.length > 100) { 
-      alert('description must be between 4 and 100 characters long')
+    if (description.length < 4 || description.length > 300) { 
+      alert('description must be between 4 and 300 characters long')
       return
     }
-    const tmp = proposals
-    tmp[title] = {
+    const tmp = {
       title: title,
       description: description
     }
-    setProposals(tmp)
-    setDispProposals(Object.entries(tmp))
+    proposalsReducer({ type: "ADD", payload: {data: [tmp]}})
   }
 
   const removeProposal = (title:string) => {
-    const tmp = proposals
-    delete tmp[title]
-    setProposals(tmp)
-    setDispProposals(Object.entries(tmp))
+    const tmp = {
+      title: title,
+      description: ''
+    }
+    proposalsReducer({ type: "REMOVE", payload: { data: tmp }})
   }
 
   const handleSubmit = (e: any) => {
@@ -52,15 +51,26 @@ const Home: NextPage = () => {
       alert('Ballot title too short!')
       return
     }
-    if (dispProposals.length < 1) {
+    if (proposals.length < 1) {
       alert('Please have at least one proposal')
       return
     } 
     const ballotId = slugify(today.valueOf() +'-'+ ballotTitle)
+
     // console.log(proposals)
-    const ballot = db.get(ballotId).put(proposals)
-    db.get('ballots').set(ballot)
-    router.push('/ballot/'+ballotId)
+    const ballotRef = db.get(ballotId)
+    ballotRef.put({title: ballotTitle})
+    const proposalsRef = ballotRef.get('proposals')
+    
+    proposals.forEach(proposal => {
+      proposalsRef.get(proposal.title).put({
+        title: proposal.title,
+        description: proposal.description
+      }) 
+    })
+    console.log(ballotId)
+    db.get('ballots').set(ballotRef)
+    router.push('/ballots/'+ballotId)
   }
 
   return (
@@ -79,13 +89,13 @@ const Home: NextPage = () => {
         </div>
         <ul className="flex flex-col space-y-8 m-8">
           {
-            dispProposals.map((proposal, index) => (
-              <li key={proposal[0]} className="flex flex-row justify-between">
+            proposals.map((proposal, index) => (
+              <li key={proposal.title} className="flex flex-row justify-between">
                 <div>
-                  <p className="text-2xl">{index+1} {proposal[1].title}</p>
-                  <p>{proposal[1].description}</p>
+                  <p className="text-2xl">{proposal.title}</p>
+                  <p>{proposal.description}</p>
                 </div>
-                <button onClick={() => removeProposal(proposal[1].title)} className="bg-red-700 px-4">Delete</button>
+                <button onClick={() => removeProposal(proposal.title)} className="bg-red-700 px-4">Delete</button>
               </li>
             ))
           }
