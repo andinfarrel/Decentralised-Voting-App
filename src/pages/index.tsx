@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { NextPage } from 'next'
 import slugify from 'slugify'
 import { useRouter } from 'next/router'
-import { db } from '../lib/database'
-import { useBaseReducer } from '../lib/base-reducer'
+import { db } from '@app/lib/database'
+import { useBaseReducer } from '@app/lib/base-reducer'
 
 interface ProposalsObject {
   [title: string]: ProposalTemplate
