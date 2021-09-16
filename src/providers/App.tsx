@@ -6,11 +6,11 @@ import React, { createContext, Dispatch, FC, SetStateAction, useCallback, useCon
 const AppContext = createContext<{
   appStatus?: AppStatus
   appReady?: boolean
-  currentUser?: IGunChainReference<Record<string, any>, any, false>
-  currentUsername?: string
-  setCurrentUsername?: Dispatch<SetStateAction<string>>
-  currentPriv?: string
-  setCurrentPriv?: Dispatch<SetStateAction<string>>
+  // currentUser?: IGunChainReference<Record<string, any>, any, false>
+  // currentUsername?: string
+  // setCurrentUsername?: Dispatch<SetStateAction<string>>
+  // currentPriv?: string
+  // setCurrentPriv?: Dispatch<SetStateAction<string>>
 }>({})
 
 enum AppStatus {
@@ -28,36 +28,43 @@ const useAppStore = () => {
 
 
 
+
 const AppProvider: FC = ({
   children
 }) => {
   const [appStatus, setAppStatus] = useState(AppStatus.READY)
   const appReady = useMemo(() => appStatus === AppStatus.READY, [appStatus])
-  const [currentUser, setCurrentUser] = useState<IGunChainReference<Record<string, any>, any, false>>(db.user())
-  const [currentUsername, setCurrentUsername] = useState('')
-  const [currentPriv, setCurrentPriv] = useState('')
+  // const [currentUser, setCurrentUser] = useState<IGunChainReference<Record<string, any>, any, false>>(null)
+  // const [currentUsername, setCurrentUsername] = useState('')
+  // const [currentPriv, setCurrentPriv] = useState('')
 
-  useEffect(() => {
-    setCurrentUser(db.user().recall({ sessionStorage: true }))
-    console.log(currentUser)
-    // @ts-ignore
-    db.on('auth', async (event: Event) => {
-      const alias = await currentUser.get('alias')
-      setCurrentUsername(alias.toString())
-    })
- 
-  }, [])
+  // const setupApp = useCallback(async () => {
+  //   try {
+  //     const cUser = await db.user().recall({sessionStorage: true})
+  //     setCurrentUser(cUser)
+
+      
+  //   } catch (err) {
+  //     setAppStatus(AppStatus.ERRORED)
+  //     console.error(err)
+  //     return
+  //   }
+  // }, [])
+
+  // useEffect(() => {
+  //   setupApp()
+  // }, [])
 
   return (
     <AppContext.Provider
       value={{
         appStatus,
         appReady,
-        currentUser: currentUser,
-        currentUsername: currentUsername,
-        setCurrentUsername: setCurrentUsername,
-        currentPriv,
-        setCurrentPriv
+        // currentUser: currentUser,
+        // currentUsername: currentUsername,
+        // setCurrentUsername: setCurrentUsername,
+        // currentPriv,
+        // setCurrentPriv
       }}
     >
       {(() => {

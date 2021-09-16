@@ -9,5 +9,6 @@ const db = Gun({
   peers: [gunUrl]
 })
 
+const gunUser = db.user()
 
-export { db }
+export { db, gunUser }

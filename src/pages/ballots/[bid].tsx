@@ -5,6 +5,7 @@ import { useBaseReducer } from '@app/lib/base-reducer'
 import { LoginForm } from '@app/components/LoginForm'
 import { AppContext, useAppStore } from '@app/providers/App'
 import NavBar from '@app/components/NavBar'
+import { useAuth } from '@app/hooks/use-auth'
 
 interface BallotPageProps {
   bid: string
@@ -35,7 +36,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
 
 const Ballot: NextPage<BallotPageProps> = ({bid}) => {
-  const { currentUser, currentUsername, setCurrentUsername } = useAppStore()
+  const { currentUser, setCurrentUser } = useAuth()
 
   const [ballotTitle, setBallotTitle] = useState('')
   const [proposals, proposalsReducer] = useBaseReducer<ProposalTemplate>('title', [])
@@ -49,6 +50,8 @@ const Ballot: NextPage<BallotPageProps> = ({bid}) => {
   }
 
   useEffect(() => {
+    // setCurrentUser(currentUser.recall({sessionStorage: true}))
+
     const ballot = db.get('ballots').get(bid)
     ballot.get('title').once((title) => {
       setBallotTitle(title.toString())

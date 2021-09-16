@@ -4,9 +4,9 @@ import { LoginForm } from '@app/components/LoginForm'
 import { useBaseReducer } from '@app/lib/base-reducer'
 import { db } from '@app/lib/database'
 import { v4 as uuidv4 } from 'uuid'
-import { AppContext } from '@app/providers/App'
+import { AppContext, useAppStore } from '@app/providers/App'
 import NavBar from '@app/components/NavBar'
-
+import { useAuth } from '@app/hooks/use-auth'
 interface PrivateBallotPageProps {
 
 }
@@ -20,12 +20,14 @@ interface CommunityTemplate {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
+  const gunUrl: string = process.env.NEXT_PUBLIC_GUNDB ? process.env.NEXT_PUBLIC_GUNDB : 'https://localhost:3030/gun'
+
   return {props: {}}
 }
 
 
 const PrivateBallot: NextPage<PrivateBallotPageProps> = ({}) => {
-  const { currentUser } = useContext(AppContext)
+  const { currentUser, setCurrentUser } = useAuth()
   const [communityName, setCommunityName] = useState('')
   const [communityId, setCommunityId] = useState('')
   const [userCommunitiesLoaded, setUserCommunitiesLoaded] = useState(false)
@@ -67,22 +69,31 @@ const PrivateBallot: NextPage<PrivateBallotPageProps> = ({}) => {
   }
 
   useEffect(() => {
-    
-    currentUser.get('communities').map().once((c) => {
-      if (c.id != '') {
-        console.log(c.id)
-        const data: CommunityTemplate = {
-          id: c.id,
-          name: c.name
-        }
-        handleAddCommunity(data)
-        console.log(userCommunities)
-        setUserCommunitiesLoaded(true)
-      }
-    })
 
-    return () => {}
   }, [])
+
+  useEffect(() => {
+    // @ts-ignore
+    if (currentUser.is) {
+      console.log('fetching communities')
+      const communities = currentUser.get('communities')
+      communities.map().on((c) => {
+        if (c.id != '') {
+          const data: CommunityTemplate = {
+            id: c.id,
+            name: c.name
+          }
+          handleAddCommunity(data)
+        }
+      })
+      setUserCommunitiesLoaded(true)
+    } else {
+      userCommunities.map((c) => {
+        userCommunitiesReducer({type: 'REMOVE', payload: {data : c}})
+      })
+    }
+    // @ts-ignore
+  }, [currentUser.is])
 
   return (
     <main className="min-h-screen  bg-black text-white flex flex-col">
@@ -105,9 +116,9 @@ const PrivateBallot: NextPage<PrivateBallotPageProps> = ({}) => {
             </div>
             <div className="my-10 p-8">
               <p className="text-4xl p-8">Your Communities</p>
-              <ul className="flex flex-col items-center text-left">
+              <ul className="flex flex-col items-center text-left space-y-10">
                 {userCommunitiesLoaded && userCommunities && userCommunities.map((community) => (
-                  <li key={communityId} className="border-white border-2 p-8 ">
+                  <li key={community.id} className="border-white border-2 p-8 ">
                     <p>{community.id}</p>
                     <p>{community.name}</p>
                   </li>
