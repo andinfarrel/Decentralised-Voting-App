@@ -4,9 +4,8 @@ import { db, gunUser } from '@app/lib/database'
 import { useEffect, useState } from 'react'
 
 export const AuthContext = createContext<{
-  currentUser?: IGunChainReference<Record<string, any>, any, false>
-  currentUsername?: string
-  setCurrentUser?: Dispatch<SetStateAction<IGunChainReference<Record<string, any>, any, false>>>
+  currentUser?: CurrentUser
+  setCurrentUser?: Dispatch<SetStateAction<CurrentUser>>
   login?: (username: string, password: string) => void,
   signUp?: (username: string, password: string) => void,
   signOut?: () => void,
@@ -17,15 +16,22 @@ export const AuthProvider: FC = ({children}) => {
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
 }
 
+interface CurrentUser {
+  alias: string
+
+}
+
 export const useProvideAuth = () => {
-  const [currentUser, setCurrentUser] = useState(gunUser)
-  const [currentUsername, setCurrentUsername] = useState('')
+  const [currentUser, setCurrentUser] = useState<CurrentUser>()
 
   const login =  (username: string, password: string) => {
-    currentUser.auth(username, password, async (ack: any) => {
+    gunUser.recall({sessionStorage: true}).auth(username, password, async (ack: any) => {
       if (ack.err) {
         ack.err && alert(ack.err)
       } else {
+        // @ts-ignore
+        const alias = gunUser.alias
+        setCurrentUser({alias: alias})
         console.log('successful login!')
       }
     })
@@ -40,7 +46,7 @@ export const useProvideAuth = () => {
       alert('passwordForm too short! minimum 8 char')
       return
     }
-    currentUser.create(username, password, ({ err }: any) => {
+    gunUser.recall({sessionStorage: true}).create(username, password, ({ err }: any) => {
       if (err) {
         alert(err);
       } else {
@@ -50,27 +56,27 @@ export const useProvideAuth = () => {
   }
 
   const signOut = () => {
-    currentUser.leave()
-    setCurrentUsername('')
+    gunUser.leave()
+    setCurrentUser(null)
   }
 
   useEffect(() => {
-    setCurrentUser(gunUser.recall({sessionStorage: true}))
-    // @ts-ignore
-    db.on('auth', async (event: Event) => {
-      const alias = await currentUser.get('alias')
-      setCurrentUsername(alias.toString())
+
+    const u = gunUser.recall({sessionStorage: true})
+    setCurrentUser({
+      // @ts-ignore
+      alias: u.alias
     })
+    console.log(currentUser)
 
     return () => {
-      setCurrentUsername('') 
-      setCurrentUser(gunUser)
+      db.off()
+      setCurrentUser(null)
     }
   }, [])
 
   return {
     currentUser,
-    currentUsername,
     setCurrentUser,
     login,
     signUp,

@@ -9,7 +9,7 @@ const LoginForm: NextComponentType = () => {
   const [passwordForm, setpasswordForm] = useState('')
 
   // @ts-ignore
-  if (currentUser.is) {
+  if (currentUser) {
     return (
       <></>
     )
