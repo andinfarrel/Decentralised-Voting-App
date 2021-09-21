@@ -1,9 +1,10 @@
 import ErrorPage from '@app/pages/_error'
-import React, { createContext, FC,useContext, useMemo, useState } from 'react'
+import React, { createContext, FC,useCallback,useContext, useMemo, useState } from 'react'
 
 const AppContext = createContext<{
   appStatus?: AppStatus
   appReady?: boolean
+  setAppStatus?: React.Dispatch<React.SetStateAction<AppStatus>>
 }>({})
 
 enum AppStatus {
@@ -28,11 +29,13 @@ const AppProvider: FC = ({
   const [appStatus, setAppStatus] = useState(AppStatus.READY)
   const appReady = useMemo(() => appStatus === AppStatus.READY, [appStatus])
 
+
   return (
     <AppContext.Provider
       value={{
         appStatus,
         appReady,
+        setAppStatus,
       }}
     >
       {(() => {

@@ -1,5 +1,4 @@
-import { IGunChainReference } from 'gun/types/chain';
-import { createContext, Dispatch, FC, SetStateAction } from 'react';
+import { createContext, Dispatch, FC, SetStateAction } from 'react'
 import { db, gunUser } from '@app/lib/database'
 import { useEffect, useState } from 'react'
 
@@ -22,16 +21,16 @@ interface CurrentUser {
 }
 
 export const useProvideAuth = () => {
-  const [currentUser, setCurrentUser] = useState<CurrentUser>()
-
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(null)
   const login =  (username: string, password: string) => {
-    gunUser.recall({sessionStorage: true}).auth(username, password, async (ack: any) => {
+    const u = gunUser.recall({sessionStorage: true})
+    u.auth(username, password, async (ack: any) => {
       if (ack.err) {
         ack.err && alert(ack.err)
       } else {
         // @ts-ignore
-        const alias = gunUser.alias
-        setCurrentUser({alias: alias})
+        const alias = await u.get('alias')
+        setCurrentUser({alias: alias.toString()})
         console.log('successful login!')
       }
     })
@@ -61,13 +60,15 @@ export const useProvideAuth = () => {
   }
 
   useEffect(() => {
+    if (!currentUser) {
+      console.log('not authed')
+      gunUser.recall({sessionStorage: true}).get('alias').once((a) => {
+        setCurrentUser({
+          alias: a.toString()
+        })
+      })
+    }
 
-    const u = gunUser.recall({sessionStorage: true})
-    setCurrentUser({
-      // @ts-ignore
-      alias: u.alias
-    })
-    console.log(currentUser)
 
     return () => {
       db.off()

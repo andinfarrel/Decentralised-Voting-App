@@ -9,6 +9,7 @@ const Enter: FC = () => {
 
 
   if (currentUser) {
+    console.log(currentUser)
     return (
       <div className="bg-black text-white w-full h-screen">
         <button onClick={() => signOut()}className="px-4 py-2 w-full bg-red-300 text-black">Sign Out</button>

@@ -1,6 +1,3 @@
-import AuthGuard from '@app/components/AuthGuard';
-import { LoginForm } from '@app/components/LoginForm';
-import NavBar from '@app/components/NavBar';
 import { useAuth } from '@app/hooks/use-auth';
 import { useBaseReducer } from '@app/lib/base-reducer';
 import { db, gunUser } from '@app/lib/database';
@@ -25,8 +22,13 @@ interface CommunityTemplate {
 const MainApp: NextPage<{}> = ({}) => {
   const { currentUser, signOut } = useAuth()
   const [groupView, setGroupView] = useState(GroupView.YOURS)
-  const [userCommunities, userCommunitiesReducer] = useBaseReducer<CommunityTemplate>('id',[])
-  const [userCommunitiesLoaded, setUserCommunitiesLoaded] = useState(false)
+
+  const [userOwnedCommunities, userOwnedCommunitiesReducer] = useBaseReducer<CommunityTemplate>('id',[])
+  const [userOwnedCommunitiesLoaded, setUserOwnedCommunitiesLoaded] = useState(false)
+
+  const [userAllCommunities, setUserAllCommunities] = useBaseReducer<CommunityTemplate>('id', [])
+  const [userAllCommunitiesLoaded, setUserAllCommunitiesLoaded] = useState(false)
+
   const [communityId, setCommunityId] = useState('')
   const [searchResults, setSearchResults] = useState<string[]>([])
 
@@ -43,7 +45,7 @@ const MainApp: NextPage<{}> = ({}) => {
 
   const findMyCommunityByName = (name: string) => {
     const res: string[] = []
-    userCommunities.forEach(community => {
+    userOwnedCommunities.forEach(community => {
       if (levenshteinDistance(name, community.name) > 0.4) {
         res.push(community.name)
       }
@@ -98,14 +100,15 @@ const MainApp: NextPage<{}> = ({}) => {
   }
   
   const handleAddCommunity = (community: CommunityTemplate) => {
-    userCommunitiesReducer({ type: 'ADD', payload: {data: [community]}})
+    userOwnedCommunitiesReducer({ type: 'ADD', payload: {data: [community]}})
   }
 
   useEffect(() => {
     if (currentUser) {
+      console.log(currentUser)
       const user = gunUser.recall({sessionStorage: true})
       console.log('fetching communities')
-      const communities = gunUser.get('communities')
+      const communities = user.get('communities')
       communities.map().on((c) => {
         if (c.id != '') {
           const data: CommunityTemplate = {
@@ -115,14 +118,13 @@ const MainApp: NextPage<{}> = ({}) => {
           handleAddCommunity(data)
         }
       })
-      setUserCommunitiesLoaded(true)
+      setUserOwnedCommunitiesLoaded(true)
     } else {
-      userCommunities.map((c) => {
-        userCommunitiesReducer({type: 'REMOVE', payload: {data : c}})
+      userOwnedCommunities.map((c) => {
+        userOwnedCommunitiesReducer({type: 'REMOVE', payload: {data : c}})
       })
     }
-    // @ts-ignore
-  }, [currentUser])
+  }, [])
 
   return (
     // <AuthGuard>
@@ -189,7 +191,7 @@ const MainApp: NextPage<{}> = ({}) => {
                         <button className="px-4 text-black bg-yellow-300 bg-opacity-90 rounded-md" onClick={() => findMyCommunityByName(communityId)}>find</button>
                       </div>
                       <ul className="p-20 flex flex-col space-y-8">
-                        {userCommunitiesLoaded && userCommunities && userCommunities.map((community) => (
+                        {userOwnedCommunitiesLoaded && userOwnedCommunities && userOwnedCommunities.map((community) => (
                           <li key={community.id} className="">
                             <p className="text-xl">{community.name}</p>
                             <p className="text-sm opacity-60 ">{community.id}</p>
