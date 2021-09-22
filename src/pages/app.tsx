@@ -1,14 +1,9 @@
-import { useAuth } from '@app/hooks/use-auth';
-import { useBaseReducer } from '@app/lib/base-reducer';
-import { db, gunUser } from '@app/lib/database';
-import clsx from 'clsx';
-import { NextPage } from 'next';
-import { useEffect, useState } from 'react';
-
-enum GroupView {
-  ALL = 'all',
-  YOURS = 'yours'
-}
+import NavBar, { View } from '@app/components/NavBar'
+import { useAuth } from '@app/hooks/use-auth'
+import { useBaseReducer } from '@app/lib/base-reducer'
+import { db, gunUser } from '@app/lib/database'
+import { NextPage } from 'next'
+import { useEffect, useState } from 'react'
 
 
 interface CommunityTemplate {
@@ -21,7 +16,8 @@ interface CommunityTemplate {
 
 const MainApp: NextPage<{}> = ({}) => {
   const { currentUser, signOut } = useAuth()
-  const [groupView, setGroupView] = useState(GroupView.ALL)
+
+  const [view, setView] = useState(View.ALL)
 
   const [userOwnedCommunities, userOwnedCommunitiesReducer] = useBaseReducer<CommunityTemplate>('id',[])
   const [userOwnedCommunitiesLoaded, setUserOwnedCommunitiesLoaded] = useState(false)
@@ -100,7 +96,7 @@ const MainApp: NextPage<{}> = ({}) => {
   }
 
   const fetchCommunities = () => {
-    if (groupView === GroupView.ALL && userOwnedCommunitiesLoaded == false) {
+    if (view === View.ALL && userOwnedCommunitiesLoaded == false) {
       const user = gunUser.recall({sessionStorage: true})
       console.log('fetching all of the user\'s communities')
       const communities = user.get('joined communities')
@@ -121,7 +117,7 @@ const MainApp: NextPage<{}> = ({}) => {
       setUserAllCommunitiesLoaded(true) 
     } 
     
-    if (groupView === GroupView.YOURS && userOwnedCommunitiesLoaded == false) {
+    if (view === View.YOURS && userOwnedCommunitiesLoaded == false) {
       const user = gunUser.recall({sessionStorage: true})
       console.log('fetching user owned communities')
       const communities = user.get('communities')
@@ -156,9 +152,9 @@ const MainApp: NextPage<{}> = ({}) => {
   }
   
   const handleAddCommunity = (community: CommunityTemplate) => {
-    if (groupView === GroupView.YOURS) {
+    if (view === View.YOURS) {
       userOwnedCommunitiesReducer({ type: 'ADD', payload: {data: [community]}})
-    } else if (groupView === GroupView.ALL) {
+    } else if (view === View.ALL) {
       userAllCommunitiesReducer({ type: 'ADD', payload: {data: [community]}})
     }
   }
@@ -170,7 +166,7 @@ const MainApp: NextPage<{}> = ({}) => {
       // cleanUserOwnedCommunities() 
       // cleanUserAllCommunities()
     }
-  }, [groupView])
+  }, [view])
 
   return (
       <div className="h-screen bg-gray-800 text-white">
@@ -179,31 +175,12 @@ const MainApp: NextPage<{}> = ({}) => {
           currentUser && (
             <div className="h-full w-full ">
               <div className="w-full h-full flex flex-col">
-                <div className="w-full flex flex-row p-8 pl-0 justify-between">
-                  <div className=" lg:w-1/6 bg-gray-900 flex flex-col rounded-r-2xl">
-                    <div className="w-full flex justify-between p-4 items-center">
-                      <p>Hi, {currentUser.alias}</p>
-                      <button onClick={() => signOut()} className="py-2 px-3 rounded-md text-sm text-white bg-red-500 bg-opacity-90 shadow-inner">Sign Out</button>
-                    </div>
-                  </div>
-                  <button onClick={() => setGroupView(GroupView.ALL)} className={clsx("px-8",  groupView === 'all' && "border-b-2")}>
-                    All
-                  </button>
-                  <button onClick={() => setGroupView(GroupView.YOURS)} className={clsx("px-8",  groupView === 'yours' && "border-b-2")}>
-                    Yours
-                  </button>
-                  <button className="px-8 rounded-md my-2 bg-green-500 bg-opacity-90 shadow-inner">
-                    Add
-                  </button>
-                  <button className="px-8 rounded-md my-2 bg-yellow-300 bg-opacity-90 text-black shadow-inner">
-                    Join
-                  </button>
-                </div>
-                <div className="w-full h-full ">
+                <NavBar view={view} onViewChange={setView} />
+                <div className="w-full h-full p-8 pt-20">
                   {
-                    groupView === 'all' && (
+                    view === 'all' && (
                       <>
-                        <div className="flex flex-row space-x-4 text-lg w-1/2 mx-auto mt-auto">
+                        <div className="flex flex-row space-x-4 text-lg w-full lg:w-1/2 mx-auto mt-auto">
                           <input onChange={(e) => setCommunityId(e.target.value)} value={communityId} placeholder="Community Name" className="p-2 w-full bg-transparent border-white border-2 rounded-md"/>
                           <button className="px-4 text-black bg-yellow-300 bg-opacity-90 rounded-md" onClick={() => findMyCommunityByName(communityId)}>find</button>
                         </div>
@@ -226,7 +203,7 @@ const MainApp: NextPage<{}> = ({}) => {
                     )
                   }
                   {
-                    groupView === 'yours' && (
+                    view === 'yours' && (
                     <>
                       <div className="flex flex-row space-x-4 text-lg w-1/2 mx-auto mt-auto">
                         <input onChange={(e) => setCommunityId(e.target.value)} value={communityId} placeholder="Community Name" className="p-2 w-full bg-transparent border-white border-2 rounded-md"/>
